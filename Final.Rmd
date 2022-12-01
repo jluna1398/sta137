@@ -1,0 +1,69 @@
+---
+title: "Final Project"
+author: "Jose Luna"
+date: "2022-11-28"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library('readxl')
+library(stats)
+```
+# Analyzing the Data.
+
+
+
+```{r, echo=FALSE}
+data =  read_excel('data.xlsx')
+y = data$Anomaly
+tm = 1:length(data$Anomaly)
+plot(tm, y , type="l",xlab="Time", ylab="Anomalies")
+
+```
+
+ 
+We can see that the graph tends to increase over time and we can use time series to forecast the next values of the follwoing year. Its importaant to anylize with time series becasue we can decompose it with trends, if it either has cyclicallity and stationary
+
+
+
+# Variation of the data.
+We can see that our data foloows a normal distributio and it seen that the majority of the residuals are equally diustributed with some outliers at the begiing and the en of the data set
+
+```{r, echo=FALSE}
+# Graphical Techniques to understand the variability of that
+loetrend = loess(y~tm, span = 0.5)
+rougloess =loetrend$residuals
+par(mfrow=c(1,2))
+hist(rougloess, freq = F, main = "Histogram of Rough", xlab = "Rough part")
+qqnorm(rougloess)
+qqline(rougloess)
+```
+We can also do the test to see if the time series is statiomnat
+
+
+
+
+
+
+
+
+# Stationary
+in order to see if our data is station we need to take a look at the rough plot and also lag plot. 
+
+```{r, echo=FALSE}
+
+x = loetrend$residuals
+plot(loetrend$residuals, type = "l", xlab = "Time", ylab = "Residuals", main = "Rough part")
+lag.plot(x, lags = 1, do.lines = F)
+```
+
+
+```{r, echo=FALSE}
+
+acf(x, lag.max = 10, main = "ACF plot of rough part")
+pacf(x,main="PACF")
+```
+What does the ACF and PACF tells us about the data
+
+
