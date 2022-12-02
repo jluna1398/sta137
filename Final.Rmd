@@ -6,64 +6,144 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
 library('readxl')
 library(stats)
+library(astsa)
+library(lmtest)
 ```
 # Analyzing the Data.
+This data set containes time and values that can be forecasted in different periods of tim 
 
+# Checiking Vraiblity of the data
+```{r, echo=FALSE}
+data =  read_excel('data.xlsx')
+Yt= data$Anomaly
+tm = 1:length(data$Anomaly)
+plot.ts(Yt)
+```
+We can see that the graph tends to increase over time and we can use time series to forecast the next values of the follwoing year. Its importaant to anylize with time series becasue we can decompose it with trends, if it either has cyclicallity and stationary
 
 
 ```{r, echo=FALSE}
-data =  read_excel('data.xlsx')
-y = data$Anomaly
-tm = 1:length(data$Anomaly)
-plot(tm, y , type="l",xlab="Time", ylab="Anomalies")
-
+# Graphical Techniques to understand the variability of that
+loesstrend = loess(Yt~tm, span = 0.2)
+plot(tm,Yt,type="l",main="Estimated trend")
+lines(tm,loesstrend$fitted,col=2)
 ```
-
- 
-We can see that the graph tends to increase over time and we can use time series to forecast the next values of the follwoing year. Its importaant to anylize with time series becasue we can decompose it with trends, if it either has cyclicallity and stationary
-
 
 
 # Variation of the data.
 We can see that our data foloows a normal distributio and it seen that the majority of the residuals are equally diustributed with some outliers at the begiing and the en of the data set
 
-```{r, echo=FALSE}
-# Graphical Techniques to understand the variability of that
-loetrend = loess(y~tm, span = 0.5)
-rougloess =loetrend$residuals
-par(mfrow=c(1,2))
-hist(rougloess, freq = F, main = "Histogram of Rough", xlab = "Rough part")
-qqnorm(rougloess)
-qqline(rougloess)
-```
-We can also do the test to see if the time series is statiomnat
-
-
-
-
-
-
 
 
 # Stationary
-in order to see if our data is station we need to take a look at the rough plot and also lag plot. 
+```{r}
+# plotting the rought stimates the roigh testomates
+Xhat=Yt-loesstrend$fitted
+plot(tm,Xhat,main="Estimated rough",type="l")
 
-```{r, echo=FALSE}
-
-x = loetrend$residuals
-plot(loetrend$residuals, type = "l", xlab = "Time", ylab = "Residuals", main = "Rough part")
-lag.plot(x, lags = 1, do.lines = F)
 ```
 
+We can see any patterns in the data. But We can see some outliers that can have conflit with our dataset. futhermore this outliers can affect the results that we get. 
 
+
+
+# PACF Data plots
 ```{r, echo=FALSE}
+par(mfrow=c(1,2))
+acf(Xhat, lag.max = 30, main = "ACF plot of rough part")
+pacf(Xhat,main="PACF")
 
-acf(x, lag.max = 10, main = "ACF plot of rough part")
-pacf(x,main="PACF")
 ```
 What does the ACF and PACF tells us about the data
+We can see that the data and ACF and PACF hs many datasets
+
+
+# Fit Arima Model
+```{r}
+# based on what we see we can fit the madel with Arima 2
+arima2 = arima(Xhat, order=c(0,1,0))
+plot(arima2$residuals)
+
+```
+
+# Model Selection Via ACF
+```{r}
+AICmat<-matrix(0,5,5)
+  for (i in 0:4){
+    for (j in 0:4){
+      AICmat[i+1,j+1]<-arima(Xhat,order = c(i, 0, j))$aic##Note:d = 0 here
+  }
+}
+AICmat
+which.min(AICmat)
+```
+
+
+# Refit model
+```{r}
+arima3 = arima(Xhat, order=c(0,0,3))
+acf(arima3$residuals,main="ACF plot for residuals")
+
+# Here we can also check if the residueals are iid by doing test or by doing QQ plot 
+# im goint to include both options and decided what we nned to do. 
+Box.test(arima3$residuals, lag=10, type='Ljung-Box')
+```
+
+```{r}
+coeftest(arima3)
+
+```
+
+
+# Model Writte up and Estimayted Parameters
+
+```{r}
+# coeffients for the final model
+arima3$coef
+
+# Standard Eror of the model
+sqrt(diag(arima3$var.coef))
+```
+
+
+# Model Refit
+
+```{r}
+n = length(Xhat)
+Xhat_refited_new = Xhat[1:(n-6)]
+
+Xhat_last = Xhat[(n-5):n]
+
+# We nned to refir the data. To this..
+model1_refited <- arima(Xhat_refited_new,order = c(0,0,3))
+
+h <- 6
+m <- n - h
+
+
+
+fcast <- predict(model1_refited, n.ahead=h)
+upper <- fcast$pred+1.96*fcast$se
+lower <- fcast$pred-1.96*fcast$se
+
+
+plot.ts(Xhat_refited_new, xlim = c(0,n), xlab = "x", ylim = c(-2, 2))
+polygon(x=c(m+1:h,m+h:1), y=c(upper,rev(lower)), col='lightblue', border=NA)
+lines(x=m+(1:h), y=fcast$pred,col='blue')
+lines(x=m+(1:h), y=Xhat_last,col='black')
+legend("top", legend = c("true","fitted"), lty=c(1, 1), col = c("black","blue"))
+```
+
+
+# Redoing Alll work all over again
+## Using Spline Test
+
 
 
