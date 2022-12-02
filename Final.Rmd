@@ -142,6 +142,9 @@ legend("top", legend = c("true","fitted"), lty=c(1, 1), col = c("black","blue"))
 ```
 
 
+Add response here after t the commas
+
+
 # Redoing Alll work all over again
 ## Using Spline Test
 
